@@ -1,0 +1,4 @@
+[pydocstyle]
+;convention = pep257
+ignore = D100,D101,D102,D103,D104,D105,D106, D400, D205
+match = (?!test_|.*pb2).*\.py

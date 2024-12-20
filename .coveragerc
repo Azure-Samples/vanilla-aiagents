@@ -1,0 +1,13 @@
+[run]
+branch = True
+source = vanilla_aiagents
+    
+
+[report]
+omit =
+    **/tests/*
+    **/__init__.py
+    **/*pb2*.py
+    setup.py
+exclude_lines =
+    pragma: no cover

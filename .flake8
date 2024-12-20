@@ -1,0 +1,9 @@
+[flake8]
+exclude =
+    .git,
+    __pycache__,
+    build,
+    dist
+max-line-length = 150
+docstring-convention = pep257
+extend-ignore = D100,D101,D102,D103,D104,D105,D106

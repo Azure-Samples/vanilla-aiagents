@@ -1,57 +1,172 @@
-# Project Name
+# Vanilla AI Agents
 
-(short, 1-3 sentenced, description of the project)
+<div style="display: flex; align-items: center; margin: 2em 0;">
+  <img src="logo.png" alt="Vanilla Agents Logo" width="50" style="flex: 1; margin-right: 2em;" />
+  <div style="flex: 2;">
+    <p>
+      <a href="https://github.com/Azure-Samples/genai-vanilla-agents/actions/workflows/pytest.yml">
+        <img src="https://github.com/Azure-Samples/genai-vanilla-agents/actions/workflows/pytest.yml/badge.svg" alt="Test status" />
+      </a>
+      <!-- <a href="https://codecov.io/gh/<your-username>/<your-repo>">
+        <img src="https://codecov.io/gh/<your-username>/<your-repo>/branch/main/graph/badge.svg?token=<your-codecov-token>" alt="codecov" />
+      </a> -->
+    </p>
+    <p>Lightweight library demonstrating how to create a simple agenting application without using any specific framework.</p>
+  </div>
+</div>
+
+## Table of Contents
+
+- [Features](#features)
+- [Future work](#future-work)
+- [Getting Started](#getting-started)
+- [Demos](#demos)
+- [Testing](#testing)
+- [License](#license)
+- [Contributing](#contributing)
 
 ## Features
 
 This project framework provides the following features:
 
-* Feature 1
-* Feature 2
-* ...
+- Multi-agent chat
+- Agent routing (including option to look for available tools to decide)
+- Agent state management
+- Custom stop conditions
+- Interactive or unattended user input
+- Chat resumability
+- Function calling on agents
+- Constrained agent routing
+- Sub-workflows
+- Simple RAG via function calls
+- Image input support
+- Ability to run pre and post steps via Sequence
+- Conversation context "hidden" variables, which are not displayed to the user but agents can read and write to access additional information
+- Usage metrics tracking per conversation, plus internal log for debuggability
+- Multiple strategies for agent to filter conversation messages (All, last N, top K and Last N, summarize, etc..)
+- LLMLingua (`extras` module) support to compress system prompts via strategies
+- LLM support for Structured Output
+- Remoting support ((`remote` module)), allowing agents to be run on a remote server and accessed elsewhere
+  - REST and gRPC channels supported
+  - Default implementation to run hosts with agent discovery and registration
+- Generated Code execution locally and via ACA Dynamic Sessions
+- Streaming support, even over REST or gRPC agents
+
+## Future work
+
+- Plugins
+  - Azure AI Search plugin
+  - DB plugin
+  - API plugin
+- DAPR integration
+- Multi-agent chat with multiple users
 
 ## Getting Started
 
 ### Prerequisites
 
-(ideally very short, if any)
-
-- OS
-- Library version
-- ...
-
-### Installation
-
-(ideally very short)
-
-- npm install [package name]
-- mvn install
-- ...
+Python 3.11 or later is required to run this project.
 
 ### Quickstart
-(Add steps to get up and running quickly)
 
-1. git clone [repository clone url]
-2. cd [repository name]
-3. ...
+```powershell
+git clone https://github.com/Azure-Samples/vanilla-aiagents
 
+cd "vanilla-aiagents"
 
-## Demo
+# Create a virtual environment
+python -m venv .venv
 
-A demo app is included to show how to use the project.
+# Activate the virtual environment
 
-To run the demo, follow these steps:
+# On Windows
+.\.venv\Scripts\activate
+# On Unix or MacOS
+source .venv/bin/activate
 
-(Add steps to start up the demo)
+# Install the required dependencies
+pip install -r requirements.txt
 
-1.
-2.
-3.
+# Clone .env.sample to .env and update the values
+cp .env.sample .env
+```
 
-## Resources
+Here is a simple example of how to use the framework:
 
-(Any additional resources or related projects)
+```python
+import os
+from vanilla_aiagents.llm import AzureOpenAILLM
+from vanilla_aiagents.agent import Agent
+from vanilla_aiagents.team import Team
+from vanilla_aiagents.workflow import Workflow
 
-- Link to supporting information
-- Link to similar sample
-- ...
+llm = AzureOpenAILLM({
+    "azure_deployment": os.getenv("AZURE_OPENAI_MODEL"),
+    "azure_endpoint": os.getenv("AZURE_OPENAI_ENDPOINT"),
+    "api_key": os.getenv("AZURE_OPENAI_KEY"),
+    "api_version": os.getenv("AZURE_OPENAI_API_VERSION"),
+})
+
+# Initialize agents and team
+sales = Agent(id="sales", llm=llm, description="A sales agent", system_message="""
+You are a sales assistant. You provide information about our products and services.
+
+# PRODUCTS
+- Product 1: $100, description
+- Product 2: $200, description
+- Product 3: $300, description
+""")
+support = Agent(id="support", llm=llm, description="A support agent", system_message="""
+You are a support assistant. You provide help with technical issues and account management.
+
+# SUPPORT GUIDELINES
+- For technical issues, please provide the following information: ...
+- For account management, please provide the following information: ...
+""")
+team = Team(id="team", description="Contoso team", members=[sales, support], llm=llm)
+
+# Create a workflow
+workflow = Workflow(askable=team)
+
+# Run the workflow
+result = workflow.run("Hello, I'd like to know more about your products.")
+print(workflow.conversation.messages)
+```
+
+## Demos
+
+`notebooks` folder contains a few demo notebooks that demonstrate how to use the framework in various scenarios.
+
+## Testing
+
+To run the tests, execute the following command:
+
+```bash
+invoke test
+```
+
+To run run selected tests, execute the following command:
+
+```bash
+invoke test --test-case <test_case>
+```
+
+Testing also includes code coverage.
+
+## Building
+
+To build the project, run the following command:
+
+```bash
+invoke build --version <version>
+```
+
+Output wheel will be available in the `dist` folder under `vanilla_aiagents` with naming `vanilla_aiagents-<version>-py3-none-any.whl`.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute.
