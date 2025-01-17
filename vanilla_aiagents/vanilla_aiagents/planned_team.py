@@ -80,6 +80,8 @@ class PlannedTeam(Askable):
             conversation (Conversation): The conversation to use for the execution. If fork_conversation is set to True, a forked conversation will be used and the messages will be written to the main conversation only at the end (depending on the fork_strategy).
             stream (bool): Whether to stream the conversation updates.
         """
+        # TODO persist plan in a conversation variable and read it from there
+        # to support resuming plans
         if self.plan is None:
             self.plan = self._create_plan(conversation)
             logger.debug("[PlannedTeam %s] created plan: %s", self.id, self.plan)
