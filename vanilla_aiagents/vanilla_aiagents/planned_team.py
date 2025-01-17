@@ -38,6 +38,7 @@ class PlannedTeam(Askable):
         fork_strategy: ConversationReadingStrategy = None,
         include_tools_descriptions: bool = False,
         repeat_until: Callable[[Conversation], bool] = None,
+        feedback_variable: str = "__feedback",
     ):
         """Initialize the PlannedTeam object.
 
@@ -50,6 +51,7 @@ class PlannedTeam(Askable):
             fork_conversation (bool): Whether to fork the conversation and avoid writing the messages to the main conversation.
             fork_strategy (ConversationReadingStrategy): The reading strategy to use to select the messages to report output back to the main conversation.
             include_tools_descriptions (bool): Whether to include the tools descriptions in the system prompt to help the orchestrator decide.
+            feedback_variable (str): The variable name to use to store the feedback from the previous plan execution.
         """
         super().__init__(id, description)
         self.agents = members
@@ -58,6 +60,7 @@ class PlannedTeam(Askable):
         self.fork_strategy = fork_strategy
         self.include_tools_descriptions = include_tools_descriptions
         self.repeat_until = repeat_until
+        self.feedback_variable = feedback_variable
 
         self.current_agent = None
         self.agents_dict = {agent.id: agent for agent in members}
@@ -171,7 +174,7 @@ BE SURE TO READ AGAIN THE INSTUCTIONS ABOVE BEFORE PROCEEDING.
         inquiry = conversation.messages[-1][
             "content"
         ]  # TODO pick the first user message
-        feedback = conversation.variables.get("__feedback", "")
+        feedback = conversation.variables.get(self.feedback_variable, "")
 
         local_messages.append(
             {
