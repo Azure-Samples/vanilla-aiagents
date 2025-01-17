@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Generator
+from typing import Generator, NamedTuple, Optional
 from openai import NOT_GIVEN, AzureOpenAI, Stream
 from openai.types.chat import ChatCompletionChunk
 from abc import ABC, abstractmethod
@@ -11,10 +11,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class LLMConstraints(NamedTuple):
+    system_message: bool = False
+    structured_output: bool = True
+    temperature: Optional[float] = None
+
+
 class LLM(ABC):
     """Abstract class for the Language Model clients."""
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, constraints: Optional[LLMConstraints] = LLMConstraints()):
         """
         Initialize the LLM client.
 
@@ -22,6 +28,7 @@ class LLM(ABC):
             config (dict): The configuration for the client.
         """
         self.config = config
+        self.constraints = constraints
 
     @abstractmethod
     def ask(
@@ -43,6 +50,24 @@ class LLM(ABC):
         temperature: float = 0.7,
     ) -> Generator[tuple[str, any], None, tuple[dict, any]]:
         pass
+    
+    def _check_system_messages(self, messages: list) -> list:
+        """Ensures that system messages are not sent to the LLM when the constraints are set.
+
+        Args:
+            messages (list): The list of messages to convert.
+
+        Returns:
+            list: The converted list of messages.
+        """
+        if not self.constraints.system_message:
+            copy = messages.copy()
+            for message in copy:
+                if message["role"] == "system":
+                    message["role"] = "assistant"
+            return copy
+        
+        return messages
 
 
 class ErrorTestingLLM(LLM):
@@ -51,14 +76,14 @@ class ErrorTestingLLM(LLM):
     Used for testing error handling.
     """
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, constraints: Optional[LLMConstraints] = LLMConstraints()):
         """
         Initialize the ErrorTestingLLM client.
 
         Args:
             config (dict): The configuration for the client.
         """
-        super().__init__(config)
+        super().__init__(config, constraints=constraints)
 
     def ask(
         self,
@@ -94,13 +119,13 @@ class AzureOpenAILLM(LLM):
         - api_version: str, API version
     """
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, constraints: Optional[LLMConstraints] = LLMConstraints()):
         """Initialize the AzureOpenAILLM client.
 
         Args:
             config (dict): The configuration for the client.
         """
-        super().__init__(config)
+        super().__init__(config, constraints=constraints)
 
         api_key = self.config["api_key"]
         token_provider = (
@@ -143,14 +168,17 @@ class AzureOpenAILLM(LLM):
             tuple: The response message and the usage metrics.
         """
         # logger.debug("Received messages: %s", messages)
+        
+        temperature = self.constraints.temperature if self.constraints.temperature else temperature
+        messages = self._check_system_messages(messages)
 
-        if response_format is NOT_GIVEN:
+        if not self.constraints.structured_output or response_format is NOT_GIVEN:
             response = self.client.chat.completions.create(
                 messages=messages,
                 model=self.config["azure_deployment"],
                 tools=tools if tools and len(tools) > 0 else NOT_GIVEN,
                 temperature=temperature,
-                tool_choice="auto" if tools else None,
+                tool_choice="auto" if tools else NOT_GIVEN,
             )
         else:
             response = self.client.beta.chat.completions.parse(
@@ -158,7 +186,7 @@ class AzureOpenAILLM(LLM):
                 model=self.config["azure_deployment"],
                 tools=tools if tools and len(tools) > 0 else NOT_GIVEN,
                 temperature=temperature,
-                tool_choice="auto" if tools else None,
+                tool_choice="auto" if tools else NOT_GIVEN,
                 response_format=response_format,
             )
 
@@ -229,6 +257,8 @@ class AzureOpenAILLM(LLM):
         # Accumulate messages and usage
         response_message = None
         usage = {"completion_tokens": 0, "prompt_tokens": 0, "total_tokens": 0}
+        temperature = self.constraints.temperature if self.constraints.temperature else temperature
+        messages = self._check_system_messages(messages)
 
         yield ["start", ""]
         while True:

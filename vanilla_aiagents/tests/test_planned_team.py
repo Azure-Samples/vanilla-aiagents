@@ -2,34 +2,42 @@ from typing import Annotated
 import unittest
 import os, logging, sys
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from vanilla_aiagents.workflow import Workflow
-from vanilla_aiagents.conversation import SummarizeMessagesStrategy
+from vanilla_aiagents.conversation import Conversation, SummarizeMessagesStrategy
 from vanilla_aiagents.agent import Agent
 from vanilla_aiagents.planned_team import PlannedTeam
 from vanilla_aiagents.llm import AzureOpenAILLM
 
 from dotenv import load_dotenv
+
 load_dotenv(override=True)
+
 
 class TestPlannedTeam(unittest.TestCase):
 
     def setUp(self):
-        self.llm = AzureOpenAILLM({
-            "azure_deployment": os.getenv("AZURE_OPENAI_MODEL"),
-            "azure_endpoint": os.getenv("AZURE_OPENAI_ENDPOINT"),
-            "api_key": os.getenv("AZURE_OPENAI_KEY"),
-            "api_version": os.getenv("AZURE_OPENAI_API_VERSION"),
-        })
-        
+        self.llm = AzureOpenAILLM(
+            {
+                "azure_deployment": os.getenv("AZURE_OPENAI_MODEL"),
+                "azure_endpoint": os.getenv("AZURE_OPENAI_ENDPOINT"),
+                "api_key": os.getenv("AZURE_OPENAI_KEY"),
+                "api_version": os.getenv("AZURE_OPENAI_API_VERSION"),
+            }
+        )
+
         # Set logging to debug for Agent, User, and Workflow
         logging.basicConfig(level=logging.INFO)
         logging.getLogger("vanilla_aiagents.agent").setLevel(logging.DEBUG)
         logging.getLogger("vanilla_aiagents.planned_team").setLevel(logging.DEBUG)
 
     def test_fork(self):
-        collector = Agent(id="datacollector", llm=self.llm, description="Call this agent to collect data for an insurance claim", system_message = """You are part of an AI process
+        collector = Agent(
+            id="datacollector",
+            llm=self.llm,
+            description="Call this agent to collect data for an insurance claim",
+            system_message="""You are part of an AI process
         Your task is to collect key information for an insurance claim to be processed.
         You need to collect the following information:
         - Policy number
@@ -47,10 +55,14 @@ class TestPlannedTeam(unittest.TestCase):
             "incident_kind": "car accident",
             "reimbursement_amount": 1000
         }
-        """)
+        """,
+        )
 
-        
-        approver = Agent(id="approver", llm=self.llm, description="Call this agent to approve the claim", system_message = """You are part of an AI process
+        approver = Agent(
+            id="approver",
+            llm=self.llm,
+            description="Call this agent to approve the claim",
+            system_message="""You are part of an AI process
         Your task is to review the information collected for an insurance claim.
         Approval is subject to the following criteria:
         - If the description refers to a car accident
@@ -59,68 +71,204 @@ class TestPlannedTeam(unittest.TestCase):
         - If the description refers to a house fire
             - approve the claim if the reimbursement amount is less than 5000 USD
             - reject the claim if the reimbursement amount is 5000 USD or more
-        """)
-        
-        responder = Agent(id="responder", llm=self.llm, description="Call this agent to respond to the claim", system_message = """You are part of an AI process
+        """,
+        )
+
+        responder = Agent(
+            id="responder",
+            llm=self.llm,
+            description="Call this agent to respond to the claim",
+            system_message="""You are part of an AI process
         Your task is to respond to the claimant based on the approval decision.
         If the claim is approved, respond with "Your claim has been approved".
         If the claim is rejected, respond with "Your claim has been rejected". Provide a reason for the rejection.
-        """)
-        
-        flow = PlannedTeam(id="flow", description="", 
-                           members=[collector, approver, responder], 
-                           llm=self.llm, 
-                           stop_callback=lambda msgs: len(msgs) > 6, 
-                           fork_conversation=True,
-                           fork_strategy=SummarizeMessagesStrategy(self.llm, "Summarize the conversation, focusing on the key points and decisions made."))
+        """,
+        )
+
+        flow = PlannedTeam(
+            id="flow",
+            description="",
+            members=[collector, approver, responder],
+            llm=self.llm,
+            fork_conversation=True,
+            fork_strategy=SummarizeMessagesStrategy(
+                self.llm,
+                "Summarize the conversation, focusing on the key points and decisions made.",
+            ),
+        )
         workflow = Workflow(askable=flow)
         workflow.restart()
-        
+
         workflow.run(ticket)
-        
-        self.assertEqual(len(workflow.conversation.messages), 3, "Expected 3 messages (sys+user+planned) in the original conversation")
+
+        self.assertEqual(
+            len(workflow.conversation.messages),
+            3,
+            "Expected 3 messages (sys+user+planned) in the original conversation",
+        )
         # Expect last message to be a dict with name and content keys
-        self.assertIn("name", workflow.conversation.messages[-1], "Expected last message to have a 'name' key")
-        self.assertIn("content", workflow.conversation.messages[-1], "Expected last message to have a 'content' key")
-        self.assertEqual(workflow.conversation.messages[-1]["name"], "summarizer", "Expected last message to be from the summarizer")
-        
+        self.assertIn(
+            "name",
+            workflow.conversation.messages[-1],
+            "Expected last message to have a 'name' key",
+        )
+        self.assertIn(
+            "content",
+            workflow.conversation.messages[-1],
+            "Expected last message to have a 'content' key",
+        )
+        self.assertEqual(
+            workflow.conversation.messages[-1]["name"],
+            "summarizer",
+            "Expected last message to be from the summarizer",
+        )
+
     def test_include_tools(self):
         # Telling the agents to set context variables implies calling a pre-defined function call
-        first = Agent(id="first", llm=self.llm, description="First agent", system_message = """You are part of an AI process
+        first = Agent(
+            id="first",
+            llm=self.llm,
+            description="First agent",
+            system_message="""You are part of an AI process
         Your task is to support the user inquiry by providing the user profile.
         Use a tool to retrieve the user profile.
-        """)
-        
-        @first.register_tool(name="get_user_profile", description="Get the user profile")
-        def get_user_profile() -> Annotated[str, "User profile in JSON format"]:
-            return "{\"name\": \"John\", \"age\": 30}"
+        """,
+        )
 
-        # Second agent might have its system message extended automatically with the context from the ongoing conversation
-        second = Agent(id="second", llm=self.llm, description="Second agent", system_message = """You are part of an AI process
+        @first.register_tool(
+            name="get_user_profile", description="Get the user profile"
+        )
+        def get_user_profile() -> (
+            Annotated[str, "User profile in JSON format, with name and age"]
+        ):
+            return '{"name": "John", "age": 30}'
+
+        # Second agent will have its system message extended automatically with the context from the ongoing conversation
+        second = Agent(
+            id="second",
+            llm=self.llm,
+            description="Second agent",
+            system_message="""You are part of an AI process
         Your task is to support the user inquiry.
-        When the users asks if they are eligible for a discount, use a tool to check the user profile.
-        
-        When done, include "DONE" in your response.
-        """)
-        
-        @second.register_tool(name="check_discount_eligibility", description="Check if the user is eligible for a discount")
-        def check_discount_eligibility(age: Annotated[int, "The user age"]) -> Annotated[str, "Eligibility message"]:
-            return "You are eligible for a discount" if age < 25 else "You are not eligible for a discount"
-        
-        flow = PlannedTeam(id="flow", description="", members=[first, second], llm=self.llm, include_tools_descriptions=True, stop_callback=lambda x: "DONE" in x[-1]["content"])
+        When the users asks if they are eligible for a discount, use a tool to check discount eligibility.
+        """,
+        )
+
+        @second.register_tool(
+            name="check_discount_eligibility",
+            description="Check if the user is eligible for a discount",
+        )
+        def check_discount_eligibility(
+            age: Annotated[int, "The user age"]
+        ) -> Annotated[str, "Eligibility message"]:
+            return (
+                "You are eligible for a discount"
+                if age < 25
+                else "You are not eligible for a discount"
+            )
+
+        flow = PlannedTeam(
+            id="flow",
+            description="",
+            members=[first, second],
+            llm=self.llm,
+            include_tools_descriptions=True,
+        )
         workflow = Workflow(askable=flow)
         workflow.restart()
-        
+
         result = workflow.run("Can I have a discount?")
-        
-        self.assertEqual(result, "callback-stop", "Expected the workflow result to be 'done'")
-        self.assertEqual(workflow.conversation.messages[-1]["name"], second.id, "Expected second agent to respond with DONE")
-        self.assertIn("not eligible", workflow.conversation.messages[-1]["content"], "Expected result to be 'not eligible'")
-        
-        # self.assertIn("voice", workflow.conversation.messages[3]["content"], "Expected second agent to recognize context variable CHANNEL")
+
+        self.assertEqual(result, "done", "Expected the workflow result to be 'done'")
+        self.assertEqual(
+            workflow.conversation.messages[-1]["name"],
+            second.id,
+            "Expected second agent to respond with DONE",
+        )
+        self.assertIn(
+            "not eligible",
+            workflow.conversation.messages[-1]["content"],
+            "Expected result to be 'not eligible'",
+        )
+
+    def test_feedback(self):
+        sales = Agent(
+            id="sales",
+            llm=self.llm,
+            description="Sales agent, takes price and discounts to provide an offer. Use a professional tone",
+            system_message="""You are part of an AI sales process
+        Your task is to respond to the user buying ask by providing a price and a discount.
+        You're goal is to maximize sold value, so keep discount low unless the user keeps asking for it.
+        NEVER exceed the maximum discount for the product.
+        """,
+        )
+
+        catalog = Agent(
+            id="catalog",
+            llm=self.llm,
+            description="Product catalog agent, provides prices and discounts",
+            system_message="""You are part of an AI process
+        Your task is to provide price and discount information for the sales agent to use in the offer.
+
+        # PRODUCTS PRICES AND DISCOUNTS
+        - Oven: $1000
+            - MAX Discount: 25%
+        - Fridge: $1500
+            - MAX Discount: 10%
+        - Washing machine: $800
+            - MAX Discount: 15%
+            
+        Use the following JSON format to provide the information:
+        {{"product": "name", "price": "1000", "max_discount": 0.10}}
+        """,
+        )
+
+        buyer = Agent(
+            id="buyer",
+            llm=self.llm,
+            description="Buyer agent, will provide feedback on the offer. MUST be called last in the workflow",
+            system_message="""You are part of an AI sales process.
+            Your task is to provide feedback on the offer provided by the sales agent.
+            Never accept the first offer
+            Minimum acceptable discount is 10%.
+            
+            When offer can be accepted, set variable "result" to "done"
+            When offer is not acceptable, set variable "result" to "KO" and "__feedback" to "I want a better discount"
+            """,
+        )
+
+        def can_end(conversation: Conversation) -> bool:
+            return (
+                conversation.variables.get("result") == "done"
+                or len(conversation.messages) > 10
+            )
+
+        flow = PlannedTeam(
+            id="offer",
+            description="",
+            members=[sales, catalog, buyer],
+            llm=self.llm,
+            include_tools_descriptions=True,
+            repeat_until=can_end,
+        )
+        workflow = Workflow(askable=flow)
+        workflow.restart()
+
+        result = workflow.run("I want a new oven")
+
+        self.assertEqual(result, "done", "Expected the workflow result to be 'done'")
+        self.assertIn(
+            "acceptable",
+            workflow.conversation.messages[-1]["content"],
+            "Expected result to be 'acceptable'",
+        )
 
     def test_plan(self):
-        collector = Agent(id="datacollector", llm=self.llm, description="Call this agent to collect data for an insurance claim", system_message = """You are part of an AI process
+        collector = Agent(
+            id="datacollector",
+            llm=self.llm,
+            description="Call this agent to collect data for an insurance claim",
+            system_message="""You are part of an AI process
         Your task is to collect key information for an insurance claim to be processed.
         You need to collect the following information:
         - Policy number
@@ -138,10 +286,14 @@ class TestPlannedTeam(unittest.TestCase):
             "incident_kind": "car accident",
             "reimbursement_amount": 1000
         }
-        """)
+        """,
+        )
 
-        
-        approver = Agent(id="approver", llm=self.llm, description="Call this agent to approve the claim", system_message = """You are part of an AI process
+        approver = Agent(
+            id="approver",
+            llm=self.llm,
+            description="Call this agent to approve the claim",
+            system_message="""You are part of an AI process
         Your task is to review the information collected for an insurance claim.
         Approval is subject to the following criteria:
         - If the description refers to a car accident
@@ -150,20 +302,31 @@ class TestPlannedTeam(unittest.TestCase):
         - If the description refers to a house fire
             - approve the claim if the reimbursement amount is less than 5000 USD
             - reject the claim if the reimbursement amount is 5000 USD or more
-        """)
-        
-        responder = Agent(id="responder", llm=self.llm, description="Call this agent to respond to the claim", system_message = """You are part of an AI process
+        """,
+        )
+
+        responder = Agent(
+            id="responder",
+            llm=self.llm,
+            description="Call this agent to respond to the claim",
+            system_message="""You are part of an AI process
         Your task is to respond to the claimant based on the approval decision.
         If the claim is approved, respond with "Your claim has been approved".
         If the claim is rejected, respond with "Your claim has been rejected". Provide a reason for the rejection.
-        """)
-        
-        flow = PlannedTeam(id="flow", description="", members=[collector, approver, responder], llm=self.llm, stop_callback=lambda msgs: len(msgs) > 6)
+        """,
+        )
+
+        flow = PlannedTeam(
+            id="flow",
+            description="",
+            members=[collector, approver, responder],
+            llm=self.llm,
+        )
         workflow = Workflow(askable=flow)
         workflow.restart()
-        
+
         workflow.run(ticket)
-        
+
         # Should be as follows:
         # 0. system message from the workflow
         # 1. user input
@@ -173,19 +336,52 @@ class TestPlannedTeam(unittest.TestCase):
         # 5. approver response
         # 6. responder input
         # 7. responder response
-        self.assertEqual(len(workflow.conversation.messages), 8, "Expected 8 messages in the conversation")
-        
-        self.assertEqual(workflow.conversation.messages[3]["name"], "datacollector", "Expected data collector to respond first")
-        self.assertIn("car accident", workflow.conversation.messages[3]["content"].lower(), "Expected data collector to respond with incident description for car accident")
-        self.assertIn("1000", workflow.conversation.messages[3]["content"], "Expected data collector to respond with reimbursement amount of 1000")
-        
-        self.assertEqual(workflow.conversation.messages[5]["name"], "approver", "Expected approver to respond second")
-        self.assertIn("reject", workflow.conversation.messages[5]["content"], "Expected approver to reject the claim")
-        
-        self.assertEqual(workflow.conversation.messages[7]["name"], "responder", "Expected responder to respond last")
-        self.assertIn("rejected", workflow.conversation.messages[7]["content"], "Expected responder to respond with claim rejection message")
+        self.assertEqual(
+            len(workflow.conversation.messages),
+            8,
+            "Expected 8 messages in the conversation",
+        )
 
-ticket= """
+        self.assertEqual(
+            workflow.conversation.messages[3]["name"],
+            "datacollector",
+            "Expected data collector to respond first",
+        )
+        self.assertIn(
+            "car accident",
+            workflow.conversation.messages[3]["content"].lower(),
+            "Expected data collector to respond with incident description for car accident",
+        )
+        self.assertIn(
+            "1000",
+            workflow.conversation.messages[3]["content"],
+            "Expected data collector to respond with reimbursement amount of 1000",
+        )
+
+        self.assertEqual(
+            workflow.conversation.messages[5]["name"],
+            "approver",
+            "Expected approver to respond second",
+        )
+        self.assertIn(
+            "reject",
+            workflow.conversation.messages[5]["content"],
+            "Expected approver to reject the claim",
+        )
+
+        self.assertEqual(
+            workflow.conversation.messages[7]["name"],
+            "responder",
+            "Expected responder to respond last",
+        )
+        self.assertIn(
+            "rejected",
+            workflow.conversation.messages[7]["content"],
+            "Expected responder to respond with claim rejection message",
+        )
+
+
+ticket = """
 From: Alice Thompson <a_thompson@foo.com>
 To: Contoso Insurance Team <report@contoso-insurancec.com>
 Subject: URGENT: Car Accident Claim - Immediate Assistance Required
@@ -217,5 +413,5 @@ Warm regards,
 Alice Thompson
 """
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

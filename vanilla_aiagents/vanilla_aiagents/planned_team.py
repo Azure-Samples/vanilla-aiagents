@@ -1,3 +1,4 @@
+import json
 from typing import Annotated, Callable
 
 from pydantic import BaseModel
@@ -33,10 +34,10 @@ class PlannedTeam(Askable):
         description: str,
         id: str,
         members: list[Askable],
-        stop_callback: Callable[[list[dict]], bool] = None,
         fork_conversation: bool = False,
         fork_strategy: ConversationReadingStrategy = None,
         include_tools_descriptions: bool = False,
+        repeat_until: Callable[[Conversation], bool] = None,
     ):
         """Initialize the PlannedTeam object.
 
@@ -53,10 +54,10 @@ class PlannedTeam(Askable):
         super().__init__(id, description)
         self.agents = members
         self.plan = None
-        self.stop_callback = stop_callback
         self.fork_conversation = fork_conversation
         self.fork_strategy = fork_strategy
         self.include_tools_descriptions = include_tools_descriptions
+        self.repeat_until = repeat_until
 
         self.current_agent = None
         self.agents_dict = {agent.id: agent for agent in members}
@@ -80,7 +81,7 @@ class PlannedTeam(Askable):
             self.plan = self._create_plan(conversation)
             logger.debug("[PlannedTeam %s] created plan: %s", self.id, self.plan)
 
-        execution_result = None
+        execution_result = "done"
         local_conversation = (
             conversation.fork() if self.fork_conversation else conversation
         )
@@ -120,16 +121,9 @@ class PlannedTeam(Askable):
                 execution_result = "agent-error"
                 break
 
-            if self.stop_callback is not None and self.stop_callback(
-                local_conversation.messages
-            ):
-                logger.debug(
-                    "[PlannedTeam %s] stop callback triggered, ending workflow.",
-                    self.id,
-                )
-                conversation.log.append(("info", "plannedteam/callback-stop", self.id))
-                execution_result = "callback-stop"
-                break
+        if self.repeat_until is not None:
+            while not self.repeat_until(local_conversation):
+                execution_result = self.ask(local_conversation, stream=stream)
 
         if stream:
             local_conversation.update(["end", self.id])
@@ -146,6 +140,7 @@ class PlannedTeam(Askable):
 You are a team orchestrator that must create a plan to solve the user inquiry by using the available agents.
 Your task is to create a plan that includes only the agents suitable to help, based on their descriptions.
 The plan must be a list of agent_id values, in the order they should be executed, along with the proper instructions for each agent.
+When FEEDBACK section has content, you must consider it to tailor the plan accordingly, since this means a previous plan was not successful to meet success criteria.
 The plan must be returned as JSON, with the following structure:
 
 {{
@@ -161,12 +156,13 @@ The plan must be returned as JSON, with the following structure:
 You MUST return the plan in the format specified above. DO NOT return anything else.
 
 # AVAILABLE AGENTS
-
 {agents}
 
 # INQUIRY
-
 {inquiry}
+
+# FEEDBACK
+{feedback}
 
 BE SURE TO READ AGAIN THE INSTUCTIONS ABOVE BEFORE PROCEEDING.
 """
@@ -175,11 +171,14 @@ BE SURE TO READ AGAIN THE INSTUCTIONS ABOVE BEFORE PROCEEDING.
         inquiry = conversation.messages[-1][
             "content"
         ]  # TODO pick the first user message
+        feedback = conversation.variables.get("__feedback", "")
 
         local_messages.append(
             {
                 "role": "system",
-                "content": system_prompt.format(agents=agents_info, inquiry=inquiry),
+                "content": system_prompt.format(
+                    agents=agents_info, inquiry=inquiry, feedback=feedback
+                ),
             }
         )
         local_messages.append(
@@ -193,6 +192,13 @@ BE SURE TO READ AGAIN THE INSTUCTIONS ABOVE BEFORE PROCEEDING.
 
         result, usage = self.llm.ask(messages=local_messages, response_format=TeamPlan)
         logger.debug("[PlannedTeam %s] result from Azure OpenAI: %s", self.id, result)
+        if self.llm.constraints.structured_output:
+            plan = result.parsed
+        else:
+            plan = result.content.replace("```json", "").replace("```", "")
+            plan = json.loads(plan)
+
+        output = TeamPlan.model_validate(plan)
 
         if usage is not None:
             # Update conversation metrics with response usage
@@ -200,7 +206,6 @@ BE SURE TO READ AGAIN THE INSTUCTIONS ABOVE BEFORE PROCEEDING.
             conversation.metrics.prompt_tokens += usage["prompt_tokens"]
             conversation.metrics.completion_tokens += usage["completion_tokens"]
 
-        output = TeamPlan.model_validate(result.parsed)
         return output.plan
 
     def _generate_agents_info(self):
