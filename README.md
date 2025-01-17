@@ -3,10 +3,11 @@
 
   <h3 align="center">Vanilla AI Agents</h3>
 
-  <a href="https://github.com/azure-samples/vanilla-aiagents/main/LICENSE.md"><img src="https://img.shields.io/github/license/Azure-Samples/vanilla-aiagents" alt="License" /></a>
-  <a href="https://github.com/Azure-Samples/vanilla-aiagents/actions/workflows/pytest.yml"><img src="https://github.com/Azure-Samples/vanilla-aiagents/actions/workflows/pytest.yml/badge.svg" alt="Test status" /></a>
-  <a href="https://github.com/Azure-Samples/vanilla-aiagents/releases"><img src="https://img.shields.io/github/v/release/Azure-Samples/vanilla-aiagents" alt="Releases" /></a>
-  <a href="https://Azure-Samples.github.io/vanilla-aiagents/"><img src="https://img.shields.io/badge/GitHub%20Pages-Online-success" alt="GitHub Pages" /></a>
+<a href="https://github.com/azure-samples/vanilla-aiagents/main/LICENSE.md"><img src="https://img.shields.io/github/license/Azure-Samples/vanilla-aiagents" alt="License" /></a>
+<a href="https://github.com/Azure-Samples/vanilla-aiagents/actions/workflows/pytest.yml"><img src="https://github.com/Azure-Samples/vanilla-aiagents/actions/workflows/pytest.yml/badge.svg" alt="Test status" /></a>
+<a href="https://github.com/Azure-Samples/vanilla-aiagents/releases"><img src="https://img.shields.io/github/v/release/Azure-Samples/vanilla-aiagents" alt="Releases" /></a>
+<a href="https://Azure-Samples.github.io/vanilla-aiagents/"><img src="https://img.shields.io/badge/GitHub%20Pages-Online-success" alt="GitHub Pages" /></a>
+<a href="https://semver.org/"><img src="https://img.shields.io/badge/semver-2.0.0-blue" alt="Semver 2.0.0" /></a>
 
   <p>Lightweight library demonstrating how to create agenting application without using any specific framework.</p>
 </div>

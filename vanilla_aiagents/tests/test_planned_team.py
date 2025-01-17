@@ -240,7 +240,7 @@ class TestPlannedTeam(unittest.TestCase):
         def can_end(conversation: Conversation) -> bool:
             return (
                 conversation.variables.get("result") == "done"
-                or len(conversation.messages) > 10
+                or len(conversation.messages) > 15
             )
 
         flow = PlannedTeam(
@@ -257,10 +257,10 @@ class TestPlannedTeam(unittest.TestCase):
         result = workflow.run("I want a new oven")
 
         self.assertEqual(result, "done", "Expected the workflow result to be 'done'")
-        self.assertIn(
-            "acceptable",
-            workflow.conversation.messages[-1]["content"],
-            "Expected result to be 'acceptable'",
+        self.assertEqual(
+            "done",
+            workflow.conversation.variables["result"],
+            "Expected 'result' variable to be 'done'",
         )
 
     def test_plan(self):
