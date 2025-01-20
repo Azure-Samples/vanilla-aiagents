@@ -26,8 +26,9 @@
 
 This project framework provides the following features:
 
-- Multi-agent chat
-- Agent routing (including option to look for available tools to decide)
+- Multi-agent chat with several orchestration options
+  - Dynamic routing (including option to look for available tools to decide)
+  - Beforehand planning with optional repetition via feedback loop
 - Agent state management
 - Custom stop conditions
 - Interactive or unattended user input

@@ -4,7 +4,11 @@ on:
     push:
         branches:
             - main
+        paths:
+            - 'vanilla_aiagents/**'
     pull_request:
+        paths:
+            - 'vanilla_aiagents/**'      
     workflow_dispatch:
 
 jobs:
