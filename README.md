@@ -44,6 +44,14 @@ This project framework provides the following features:
 - Multiple strategies for agent to filter conversation messages (All, last N, top K and Last N, summarize, etc..)
 - LLMLingua (`extras` module) support to compress system prompts via strategies
 - LLM support for Structured Output
+- DAPR integration
+  - Native submodule to host `Askable` and `Workflow` as Dapr Actors
+  - Dapr _PubSub_ integration for `Workflow` to enable
+    - Event sourcing
+    - Decoupled communication between workflows
+- Multi-agent chat with multiple users
+  - Dapr PubSub integrations allows to move from one-to-many to many-to-many conversations, with different `User` instances impersonating different user profiles
+  - Demo Repo (_Coming soon_)
 - Remoting support ((`remote` module)), allowing agents to be run on a remote server and accessed elsewhere
   - REST and gRPC channels supported
   - Default implementation to run hosts with agent discovery and registration
@@ -56,8 +64,6 @@ This project framework provides the following features:
   - Azure AI Search plugin
   - DB plugin
   - API plugin
-- DAPR integration
-- Multi-agent chat with multiple users
 
 ## Getting Started
 
@@ -130,6 +136,20 @@ workflow = Workflow(askable=team)
 result = workflow.run("Hello, I'd like to know more about your products.")
 print(workflow.conversation.messages)
 ```
+
+### Submodules
+
+#### `remote`
+
+This module provides a way to run agents on a remote server and access them elsewhere. It includes support for REST and gRPC channels, as well as a default implementation to run hosts with agent discovery and registration.
+
+Additionally, it features Dapr integration, allowing for the hosting of `Askable` and `Workflow` as Dapr Actors, enabling event sourcing and decoupled communication between workflows.
+
+#### `extras`
+
+This module provides additional features to enhance the functionality of the framework. It includes support for:
+
+- `LLMLingua` to compress system prompts
 
 ## Demos
 
