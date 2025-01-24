@@ -13,7 +13,7 @@ else:
 
 
 setup(
-    name='vanilla_aiagents',
+    name="vanilla_aiagents",
     version=version,
     packages=find_packages(),
     install_requires=[
@@ -22,31 +22,30 @@ setup(
         "azure-identity",
     ],
     extras_require={
-        'remote': [
-            'fastapi',
-            'uvicorn',
-            'starlette_gzip_request',
-            'grpcio-tools',
-            'grpcio-reflection'
+        "remote": [
+            "fastapi",
+            "uvicorn",
+            "starlette_gzip_request",
+            "grpcio-tools",
+            "grpcio-reflection",
+            "dapr-ext-fastapi>=1.14.0",
+            "cloudevents>=1.11.0",
         ],
-        'extras': [
-            'llmlingua'
-        ]
+        "extras": ["llmlingua"],
     },
     entry_points={
-        'console_scripts': [
-        ],
+        "console_scripts": [],
     },
-    author='Riccardo Chiodaroli',
-    author_email='ricchi@microsoft.com',
-    description='Sample package demonstrating how to create a simple agenting application without using any specific framework',
-    long_description=open('README.md').read(),
-    long_description_content_type='text/markdown',
-    url='https://github.com/azure-samples/genai-vanilla-agents',
+    author="Riccardo Chiodaroli",
+    author_email="ricchi@microsoft.com",
+    description="Sample package demonstrating how to create a simple agenting application without using any specific framework",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
+    url="https://github.com/azure-samples/genai-vanilla-agents",
     classifiers=[
-        'Programming Language :: Python :: 3',
-        'License :: OSI Approved :: MIT License',
-        'Operating System :: OS Independent',
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
     ],
-    python_requires='>=3.11',
+    python_requires=">=3.11",
 )

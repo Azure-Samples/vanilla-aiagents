@@ -22,10 +22,10 @@ class PlannedTeam(Askable):
         description (str): The description of the team.
         id (str): The unique identifier of the team.
         members (list[Askable]): The agents that are part of the team.
-        stop_callback (Callable[[list[dict]], bool]): The callback function to determine when to stop the conversation
         fork_conversation (bool): Whether to fork the conversation and avoid writing the messages to the main conversation.
         fork_strategy (ConversationReadingStrategy): The reading strategy to use to select the messages to report output back to the main conversation.
         include_tools_descriptions (bool): Whether to include the tools descriptions in the system prompt to help the orchestrator decide.
+        repeat_until (Callable[[Conversation], bool]): A function to check if the plan should be repeated.
     """
 
     def __init__(
@@ -47,10 +47,10 @@ class PlannedTeam(Askable):
             description (str): The description of the PlannedTeam object. Typically used by orchestrators.
             id (str): The ID of the PlannedTeam object. Will be used to uniquely identify it.
             members (list[Askable]): The agents that are part of the team.
-            stop_callback (Callable[[list[dict]], bool]): The callback function to determine when to stop the conversation
             fork_conversation (bool): Whether to fork the conversation and avoid writing the messages to the main conversation.
             fork_strategy (ConversationReadingStrategy): The reading strategy to use to select the messages to report output back to the main conversation.
             include_tools_descriptions (bool): Whether to include the tools descriptions in the system prompt to help the orchestrator decide.
+            repeat_until (Callable[[Conversation], bool]): A function to check if the plan should be repeated.
             feedback_variable (str): The variable name to use to store the feedback from the previous plan execution.
         """
         super().__init__(id, description)

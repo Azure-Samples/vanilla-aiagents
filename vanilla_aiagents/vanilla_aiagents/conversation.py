@@ -12,12 +12,16 @@ logger = logging.getLogger(__name__)
 class ConversationMetrics(BaseModel):
     """A class to store conversation metrics."""
 
-    total_tokens: int
-    prompt_tokens: int
-    completion_tokens: int
+    total_tokens: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
 
 
 class Conversation:
+    messages: list[dict]
+    variables: dict[str, str]
+    log: list
+    metrics: ConversationMetrics
     """A class to represent a conversation.
 
     This is only stateful object in the system, and is used to store the conversation
@@ -76,7 +80,7 @@ class Conversation:
         )
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data: dict):
         """Create a conversation object from a raw dictionary."""
         return cls(
             messages=data.get("messages", []),
@@ -110,7 +114,7 @@ class LastNMessagesStrategy(ConversationReadingStrategy):
         self.n = n
 
     def get_messages(self, conversation: Conversation) -> list[dict]:
-        return self.exclude_system_messages(conversation.messages)[-self.n:]
+        return self.exclude_system_messages(conversation.messages)[-self.n :]
 
 
 class AllMessagesStrategy(ConversationReadingStrategy):
@@ -136,7 +140,7 @@ class TopKLastNMessagesStrategy(ConversationReadingStrategy):
 
     def get_messages(self, conversation: Conversation) -> list[dict]:
         list = self.exclude_system_messages(conversation.messages)
-        return list[: self.k] + list[-self.n:]
+        return list[: self.k] + list[-self.n :]
 
 
 class SummarizeMessagesStrategy(ConversationReadingStrategy):

@@ -36,7 +36,7 @@ class Team(Askable):
         id: str,
         members: list[Askable],
         system_prompt: str = "",
-        stop_callback: Callable[[list[dict]], bool] = None,
+        stop_callback: Callable[[Conversation], bool] = None,
         allowed_transitions: dict[Agent, list[Agent]] = None,
         include_tools_descriptions: bool = False,
         reading_strategy: ConversationReadingStrategy = AllMessagesStrategy(),
@@ -113,6 +113,7 @@ class Team(Askable):
                 logger.debug(
                     "[Team %s] stop signal received, ending workflow.", self.id
                 )
+                conversation.log.append(("info", "agent/stop", next_agent_id))
                 conversation.log.append(("info", "team/stop", self.id))
                 execution_result = "agent-stop"
                 break
@@ -124,7 +125,7 @@ class Team(Askable):
                 execution_result = "agent-error"
                 break
 
-            if self.stop_callback(conversation.messages):
+            if self.stop_callback(conversation):
                 logger.debug(
                     "[Team %s] stop callback triggered, ending workflow.", self.id
                 )

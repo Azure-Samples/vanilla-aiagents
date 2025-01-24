@@ -13,7 +13,9 @@ logger = logging.getLogger(__name__)
 class WorkflowInput:
     """A class to represent the input to a workflow."""
 
-    def __init__(self, text: str, images: list[str] = []):
+    def __init__(
+        self, text: str, images: list[str] = [], name: str = "user", role: str = "user"
+    ):
         """Initialize the WorkflowInput object.
 
         Args:
@@ -22,6 +24,8 @@ class WorkflowInput:
         """
         self.text = text
         self.images = images
+        self.name = name
+        self.role = role
 
     # Function to encode the image
     def _encode_image(self, image_path: str):
@@ -50,7 +54,21 @@ class WorkflowInput:
                 for image in self.images
             ]
         )
-        return {"role": "user", "name": "user", "content": content}
+        return {"role": "user", "name": self.name, "content": content}
+
+    def to_dict(self):
+        """Convert the WorkflowInput to a dictionary."""
+        return {"text": self.text, "images": self.images, "name": self.name}
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        """Create a WorkflowInput object from a dictionary."""
+        return cls(
+            text=data.get("text", ""),
+            images=data.get("images", []),
+            name=data.get("name", "user"),
+            role=data.get("role", "user"),
+        )
 
 
 class Workflow:
@@ -75,7 +93,7 @@ class Workflow:
 
         logger.debug("Workflow initialized")
 
-    def run(self, workflow_input: Union[str, WorkflowInput]):
+    def run(self, workflow_input: Union[str, WorkflowInput, dict]):
         """Run the workflow with the given input.
 
         Args:
@@ -103,13 +121,17 @@ class Workflow:
         if isinstance(workflow_input, WorkflowInput):
             self.conversation.messages.append(workflow_input.to_message())
             logger.debug("Added user input to messages: %s", workflow_input.text)
+        elif isinstance(workflow_input, dict):
+            self.conversation.messages.append(
+                WorkflowInput.from_dict(workflow_input).to_message()
+            )
         elif isinstance(workflow_input, str):
             self.conversation.messages.append(
                 {"role": "user", "name": "user", "content": workflow_input}
             )
         logger.debug("Added user input to messages: %s", workflow_input)
 
-    def run_stream(self, workflow_input: Union[str, WorkflowInput]):
+    def run_stream(self, workflow_input: Union[str, WorkflowInput, dict]):
         """Run the workflow with the given input and stream the conversation updates.
 
         Args:

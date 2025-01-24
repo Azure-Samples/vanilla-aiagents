@@ -118,7 +118,7 @@ class TestLLM(unittest.TestCase):
             description="",
             members=[first, second],
             llm=self.llm,
-            stop_callback=lambda x: len(x) > 2,
+            stop_callback=lambda conv: len(conv.messages) > 2,
         )
         workflow = Workflow(askable=flow)
 
