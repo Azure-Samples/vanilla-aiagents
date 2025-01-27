@@ -2,13 +2,14 @@ import argparse
 import logging
 from dotenv import load_dotenv
 
-from .actors import WorkflowActor, WorkflowActorInterface
+from .actors import InputWorkflowEvent, WorkflowActor, WorkflowActorInterface
 import os
 import uvicorn
 from contextlib import asynccontextmanager
-from fastapi import Body, FastAPI
+from fastapi import FastAPI, Request
 from dapr.ext.fastapi import DaprActor, DaprApp
 from dapr.actor import ActorProxy, ActorId
+from cloudevents.http import from_http
 
 
 load_dotenv(override=True)
@@ -52,14 +53,21 @@ def main():
         pubsub=PUBSUB_NAME,
         topic=TOPIC_NAME,
     )
-    async def handle_workflow_input(event=Body()):
+    async def handle_workflow_input(req: Request):
         try:
-            logger.info(f"Received workflow input: {event}")
-            data = event["data"]
+
+            # Read fastapi request body as text
+            body = await req.body()
+            logger.info(f"Received workflow input: {body}")
+
+            # Parse the body as a CloudEvent
+            event = from_http(data=body, headers=req.headers)
+
+            data = InputWorkflowEvent.model_validate(event.data)
             proxy: WorkflowActorInterface = ActorProxy.create(
-                "WorkflowActor", ActorId(data["id"]), WorkflowActorInterface
+                "WorkflowActor", ActorId(data.id), WorkflowActorInterface
             )
-            await proxy.run(data["input"])
+            await proxy.run(data.input)
 
             return {"status": "SUCCESS"}
         except Exception as e:
