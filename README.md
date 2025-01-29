@@ -145,6 +145,8 @@ This module provides a way to run agents on a remote server and access them else
 
 Additionally, it features Dapr integration, allowing for the hosting of `Askable` and `Workflow` as Dapr Actors, enabling event sourcing and decoupled communication between workflows.
 
+See the [Remote Agents documentation](docs/remote.md) and [Actors documentation](docs/actors.md) for more information.
+
 #### `extras`
 
 This module provides additional features to enhance the functionality of the framework. It includes support for:

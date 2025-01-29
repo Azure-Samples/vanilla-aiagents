@@ -52,7 +52,7 @@ class TestReadingStrategy(unittest.TestCase):
         agent = Agent(
             id="test-agent",
             description="Test Agent",
-            system_message="Simply say 'hello'",
+            system_message="Always respond 'hello' to any ask",
             llm=self.llm,
             update_strategy=ReplaceLastMessageUpdateStrategy(),
         )
