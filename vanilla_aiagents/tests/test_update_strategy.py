@@ -52,14 +52,14 @@ class TestReadingStrategy(unittest.TestCase):
         agent = Agent(
             id="test-agent",
             description="Test Agent",
-            system_message="Always respond 'hello' to any ask",
+            system_message="Always respond 'I am sorry' to any ask",
             llm=self.llm,
             update_strategy=ReplaceLastMessageUpdateStrategy(),
         )
 
         conversation = Conversation(messages=[], variables={})
         conversation.messages.append(
-            {"role": "assistant", "content": "This will be replaced"}
+            {"role": "assistant", "content": "Can I order a pizza?"}
         )
         agent.ask(conversation)
 
@@ -67,7 +67,7 @@ class TestReadingStrategy(unittest.TestCase):
             len(conversation.messages), 1, "Expected 1 message in the conversation"
         )
         self.assertNotIn(
-            "replaced",
+            "pizza",
             conversation.messages[0]["content"],
             "Expected message to be replaced",
         )
